@@ -6,13 +6,14 @@ package com.wjz.learnjava.simpleFactory;
  */
 public class SimpleFactory {
 
-    public AbstractCar createCar(String type) {
-        if ("BWM".equals(type)) {
-            return new BWMCar();
-        } else if ("AUDI".equals(type)) {
-            return new AudiCar();
-        } else {
-            throw new RuntimeException("不会造这种类型的车");
+    public <T extends  AbstractCar> T createCar(Class<T> type) {
+        try {
+            return type.newInstance();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
         }
+        return null;
     }
 }

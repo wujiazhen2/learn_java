@@ -6,11 +6,11 @@ package com.wjz.learnjava.abstractFactory;
  */
 public class BWMFactory extends AbstractFactory {
 
-    public AbstractCar createYellowCar() {
-        return new YellowBWMCar();
+    public AbstractMotorbike createMotorbike() {
+        return new BWMMotorbike();
     }
 
-    public AbstractCar createRedCar() {
-        return new RedBWMCar();
+    public AbstractCar createCar() {
+        return new BWMCar();
     }
 }

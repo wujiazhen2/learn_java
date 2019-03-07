@@ -6,11 +6,12 @@ package com.wjz.learnjava.abstractFactory;
  */
 public class AudiFactory extends AbstractFactory {
 
-    public AbstractCar createYellowCar() {
-        return new YellowAudiCar();
+
+    public AbstractMotorbike createMotorbike() {
+        return new AudiMotorbike();
     }
 
-    public AbstractCar createRedCar() {
-        return new RedAudiCar();
+    public AbstractCar createCar() {
+        return new AudiCar();
     }
 }

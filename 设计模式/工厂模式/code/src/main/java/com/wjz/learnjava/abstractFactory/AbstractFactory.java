@@ -6,7 +6,7 @@ package com.wjz.learnjava.abstractFactory;
  */
 public abstract class AbstractFactory {
 
-    public abstract AbstractCar createYellowCar();
+    public abstract AbstractMotorbike createMotorbike();
 
-    public abstract AbstractCar createRedCar();
+    public abstract AbstractCar createCar();
 }
