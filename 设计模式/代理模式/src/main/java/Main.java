@@ -1,24 +1,24 @@
 import CGLIBProxy.CGLibProxy;
 import JDKProxy.JdkDynamicProxy;
-import staticProxy.GameProxy;
-import staticProxy.IGamePlayer;
-import staticProxy.RealPlayer;
+import staticProxy.Parent;
+import staticProxy.Persion;
+import staticProxy.Son;
 
 public class Main {
 
     public static void main(String[] args) {
-        RealPlayer realPlayerA = new RealPlayer();
+        Persion son = new Son();
         //静态代理
-        GameProxy gameProxy = new GameProxy(realPlayerA);
-        gameProxy.playGame();
+        Persion parent = new Parent(son);
+        parent.playGame();
 
         //JDK动态代理
-        IGamePlayer gameProxy1 = new JdkDynamicProxy(realPlayerA).getProxy();
-        gameProxy1.playGame();
+        Persion parent1 = new JdkDynamicProxy(son).getProxy();
+        parent1.playGame();
 
         //CGLIB动态代理
-        CGLibProxy cgLibProxy = new CGLibProxy(realPlayerA);
-        IGamePlayer gameProxy2  = cgLibProxy.getProxy();
-        gameProxy2.playGame();
+        CGLibProxy cgLibProxy = new CGLibProxy(son);
+        Persion paretn2  = cgLibProxy.getProxy();
+        paretn2.playGame();
     }
 }
