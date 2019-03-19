@@ -47,7 +47,7 @@ public class Client {
 Spring委派模式使用广泛。Springmvc中的DispatchServlet就是委派模式的实现，通过不同的请求路径委派任务给相应的处理方法。还有Spring对xml标签进行解析时,使用的BeanDefinitionParserDelegate类。
 
 类图:
-![BeanDefinitionParserDelegate]()
+![BeanDefinitionParserDelegate](https://github.com/wujiazhen2/learn_java/blob/master/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/%E5%A7%94%E6%B4%BE%E6%A8%A1%E5%BC%8F/img/BeanDefinitionParserDelegate.png?raw=true)
 
 通过标签的命名控制,委派合适的NamespaceHandler进行分析标签。
 
