@@ -52,5 +52,5 @@ Spring委派模式使用广泛。Springmvc中的DispatchServlet就是委派模�
 通过标签的命名空间,委派合适的NamespaceHandler进行分析标签。
 
 
-
+## 总结
 委派模式就是一种路由分发。将处理逻辑注册到委派者上，委派者根据需求选择合适的处理逻辑完成任务。
