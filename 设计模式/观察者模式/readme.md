@@ -9,6 +9,6 @@ Observer: 观察者
 ConcreteObserver: 具体观察者
 
 
-![观察者模式]()
+![观察者模式](https://github.com/wujiazhen2/learn_java/blob/master/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/%E8%A7%82%E5%AF%9F%E8%80%85%E6%A8%A1%E5%BC%8F/img/%E8%A7%82%E5%AF%9F%E8%80%85%E6%A8%A1%E5%BC%8F.png?raw=true)
 
 
