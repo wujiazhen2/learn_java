@@ -29,7 +29,7 @@ import org.aopalliance.aop.Advice;
  * The Advisor interface allows support for different types of advice,
  * such as <b>before</b> and <b>after</b> advice, which need not be
  * implemented using interception.
- *
+ * 通知接口，AOP中所有通知都会封装成它的子类注册进Spring中
  * @author Rod Johnson
  * @author Juergen Hoeller
  */

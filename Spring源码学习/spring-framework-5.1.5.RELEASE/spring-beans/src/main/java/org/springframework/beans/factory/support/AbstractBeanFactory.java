@@ -264,7 +264,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			// We're assumably within a circular reference.
 
 			if (isPrototypeCurrentlyInCreation(beanName)) {
-				//当前线程已存在beanName相同，正在创建的多例实例。循环依赖时出现
+				//bean是多例时,不支持循环引用
 				throw new BeanCurrentlyInCreationException(beanName);
 			}
 

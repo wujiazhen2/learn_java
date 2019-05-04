@@ -70,13 +70,13 @@ import org.springframework.util.StringUtils;
  */
 public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry {
 
-	/** Cache of singleton objects: bean name to bean instance. */
+	/** 缓存初始化完成的单例对象 */
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
-	/** Cache of singleton factories: bean name to ObjectFactory. */
+	/** 缓存获取单例对象的工厂，提前暴露未完成初始化的对象 */
 	private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
-	/** Cache of early singleton objects: bean name to bean instance. */
+	/** 提前暴露未完成初始化的对象, */
 	private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
 
 	/** Set of registered singletons, containing the bean names in registration order. */
@@ -132,8 +132,11 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 */
 	protected void addSingleton(String beanName, Object singletonObject) {
 		synchronized (this.singletonObjects) {
+			//注册单例对象
 			this.singletonObjects.put(beanName, singletonObject);
+			//移除单例工厂
 			this.singletonFactories.remove(beanName);
+			//异常提前暴露的单例对象
 			this.earlySingletonObjects.remove(beanName);
 			this.registeredSingletons.add(beanName);
 		}
@@ -168,6 +171,14 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 * Return the (raw) singleton object registered under the given name.
 	 * <p>Checks already instantiated singletons and also allows for an early
 	 * reference to a currently created singleton (resolving a circular reference).
+	 * 根据给定的bean name获取单例对象。单例对象缓存在三个Map中
+	 * singletonObjects 缓存初始化完成的单例对象
+	 * earlySingletonObjects 缓存初始化未完成的单例对象
+	 * singletonFactories 缓存获取单例对象的工厂，提前暴露未完成初始化的对象
+	 * 这三个map是用于解决循环引用的问题，如果存在循环引用，A 引用 B,B 引用 A.
+	 * A初始化时会依赖B,然后执行B的实例化初始化.B又依赖于A,这时A还没完成初始化。
+	 * 所以这时先通过singletonFactories中获取的工厂类拿到A的引用，初始化B.即解决
+	 * 了循环引用。Spring只支持单例对象,属性注入的循环引用。
 	 * @param beanName the name of the bean to look for
 	 * @param allowEarlyReference whether early references should be created or not
 	 * @return the registered singleton object, or {@code null} if none found
@@ -176,6 +187,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 		Object singletonObject = this.singletonObjects.get(beanName);
 		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
+			//单例对象真正存在中
 			synchronized (this.singletonObjects) {
 				singletonObject = this.earlySingletonObjects.get(beanName);
 				if (singletonObject == null && allowEarlyReference) {
