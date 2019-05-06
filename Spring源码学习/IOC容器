@@ -1,0 +1,946 @@
+
+# IOC容器
+
+## IOC简介
+控制反转（IoC）也称为依赖注入（DI）。IOC指的是对象通过构造函数参数，工厂方法的参数，对象实例上设置的属性来定义它们的依赖关系，然后容器在创建bean时注入这些依赖项的过程。这个过程是基础bean的控制反转，通过使用类的直接构造或诸如服务定位器模式之类的机制来控制bean自身的实例化和依赖项的位置。
+
+org.springframework.beans和org.springframework.context包是Spring框架的IoC容器的基础。BeanFactory 接口提供了一种能够管理任何类型对象的高级配置机制。 ApplicationContext 是BeanFactory的子接口。它增加了新的功能如：
+1. 更容易与Spring的AOP功能集成
+2. 消息资源处理（用于国际化）
+3. 事件发布
+4. 应用程序层特殊的上下文，例如用于Web应用程序的WebApplicationContext 。
+
+简而言之，BeanFactory提供了配置框架和基本功能。ApplicationContext添加了更多企业特定的功能。有关使用BeanFactory的更多,看到 的[BeanFactory](#BeanFactory)更多信息。
+
+在Spring中，构成应用程序主干并由Spring IoC容器管理的对象称为bean。bean是一个由Spring IoC容器实例化，组装和管理的对象。bean只是应用程序中众多对象之一。IOC容器使用的配置元数据描述了bean及其之间的依赖关系。
+
+## ApplicationContext
+ApplicationContextSpring提供了几种接口实现。在独立应用程序中，通常会创建一个ClassPathXmlApplicationContext 或FileSystemXmlApplicationContext的实例 。虽然XML是定义配置元数据的传统格式，但您可以通过提供少量XML配置来声明容器而使用Java注释或代码作为元数据格式。以XML声明方式启用对这些其他元数据格式的支持。
+
+### 初始化容器
+ClassPathXmlApplicationContext，顾名思义，从CLASSPATH路径加载配置元数据。
+```java
+ApplicationContext context = new ClassPathXmlApplicationContext("applicationContext.xml");
+```
+
+### 使用applicationContextn获取bean
+ApplicationContext是高级工厂的接口，能够维护不同bean及其依赖项的注册表。通过使用该方法T getBean(String name, Class<T> requiredType)，检索Bean的实例。
+```java
+ApplicationContext context = new ClassPathXmlApplicationContext("services.xml", "daos.xml");
+PetStoreService service = context.getBean("petStore", PetStoreService.class);
+List<String> userList = service.getUsernameList();
+```
+
+### GenericApplicationContext
+最灵活的变体是GenericApplicationContext与Reader委托相结合,通过Reader的不同可以读取不同的配置文件 - 例如，XmlBeanDefinitionReader对于XML文件，如以下示例所示：
+```java
+GenericApplicationContext context = new GenericApplicationContext();
+new XmlBeanDefinitionReader(context).loadBeanDefinitions("services.xml", "daos.xml");
+context.refresh();
+```
+您还可以使用GroovyBeanDefinitionReaderfor Groovy文件，如以下示例所示：
+```java
+GenericApplicationContext context = new GenericApplicationContext();
+new GroovyBeanDefinitionReader(context).loadBeanDefinitions("services.groovy", "daos.groovy");
+context.refresh();
+```
+您可以ApplicationContext在不同的配置源中读取和匹配此类读取器委托，读取bean定义。
+
+
+# Spring 配置元数据
+Spring IoC容器管理一个或多个bean。这些bean是使用您提供给容器的配置元数据创建的（例如，以XML <bean/>定义的形式 ）。在容器内，这些bean定义表示为BeanDefinition 对象，其中包含以下元数据（以及其他信息）：
+1. 包限定类名。
+2. bean的行为（Scope,生命周期）
+3. 依赖项
+4. 属性
+
+元数据由以下属性组成
+属性 | 意义
+-- |--
+Class | 实现类名
+Name  | bean的标识符
+Scope | bean的范围，在范围内的bean是单例的。默认singleton，全局单例。prototype，多例。
+Constructor arguments | 通过构造函数依赖注入
+Properties| 通过属性依赖注入
+Autowiring mode| 注入类型，byName,ByType等
+Lazy initialization mode| 懒加载
+Initialization method| 初始化回调方法
+Destruction method| 销毁回调方法
+
+
+有关在Spring容器中使用其他形式的元数据的信息，请参阅：
+1. [基于XML的配置](#)：定义配置元数据的传统格式
+2. [基于注解的配置](#)：Spring 2.5引入了对基于注解的配置元数据的支持。
+3. [基于Java的配置](#)：从Spring 3.0开始，Spring JavaConfig项目提供的许多功能成为核心Spring Framework的一部分。因此，您可以使用Java而不是XML文件在应用程序类外部定义bean。要使用这些新功能，要借助 @Configuration， @Bean， @Import，和@DependsOn注释。
+4. [基于Groovy DSL的配置](#):从Spring 4.0开始支持Groovy DSL配置bean。
+
+Spring配置由容器必须管理的至少一个且通常不止一个bean定义组成。基于XML的配置元数据将这些bean配置为<bean/>顶级元素内的<beans/>元素
+以下示例显示了基于XML的配置元数据的基本结构：
+
+## 基于XML的配置
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="..." class="...">   
+        <!-- bean的依赖和配置写在这 -->
+    </bean>
+
+    <bean id="..." class="...">
+       <!-- bean的依赖和配置写在这 -->
+    </bean>
+</beans>
+```
+### name配置
+每个bean都有一个或多个标识符。这些标识符在托管bean的容器中必须是唯一的。bean通常只有一个标识符。但是，如果它需要多个，则额外的可以被视为别名。可以使用id属性，name属性或两者来指定bean标识符。
+```xml
+ <alias name="person" alias="p"/>
+ <bean name="person" id="person" class="com.qworldr.test.Person"/>
+```
+
+### Scope配置
+Scope配置特定bean定义创建的对象的范围
+Scope	|Description
+--|--
+singleton|(默认) 一个bean定义在一个IOC容器中只有一个对象实例
+prototype|一个bean定义在一个IOC容器中有多个对象实例
+request|一个bean定义在每次Request请求都有一个对象实例
+session|一个bean定义在每次Http会话都有一个对象实例
+application|一个bean定义一个web应用有一个对象实例
+websocket|一个bean定义一个webSocket有一个对象实例
+
+```xml
+<bean  id="player" class="com.qworldr.mmorpg.logic.player.Player" scope="prototype"/>
+```
+
+### 自动注入配置
+
+模式|说明
+--|--
+no|（默认）无自动装配。Bean引用必须由ref元素定义。
+byName|按属性名称自动装配。Spring查找与需要自动装配的属性同名的bean。例如，如果bean定义设置autowire为byName并且它包含一个master属性（即，它有一个 setMaster(..)方法），则Spring会查找名为master的bean的定义并使用它来设置属性。
+byType|如果容器中只存在一个属性类型的bean，则允许自动装配属性。如果存在多个，则抛出致命异常，这表示您可能不会byType对该bean 使用自动装配。如果没有匹配的bean，则不会发生任何事情（未设置该属性）。
+constructor|类似byType但适用于构造函数参数。如果容器中没有构造函数参数类型的一个bean，则会引发致命错误。
+
+会将Spring中定义的bean注入到Player中相同名字的属性中。
+```xml
+ <bean  id="player" class="com.qworldr.mmorpg.logic.player.Player" 
+            autowire="byName"/>
+```
+### 懒加载
+默认情况下，ApplicationContext实现会在启动时创建和配置所有 单例 bean作为初始化过程的一部分。通常，这种预先实例化是可取的，因为配置或周围环境中的错误会被立即发现的，而不是几小时甚至几天后。如果不希望出现这种情况，可以通过将bean定义标记为延迟初始化来阻止单例bean的预实例化。延迟初始化的bean告诉IoC容器在第一次请求时创建bean实例，而不是在启动时创建。
+```xml
+<bean id="lazy" class="com.something.ExpensiveToCreateBean" lazy-init="true"/>
+```
+
+等同下面注解配置
+```java
+@Lazy
+@Component
+public class ExpensiveToCreateBean{
+
+}
+```
+
+### 初始化和销毁回调
+可以通过以下三种方法配置bean的初始化和销毁回调方法
+1. 在InitializingBean和 DisposableBean回调接口
+2. xml配置init-method和 destroy-method
+3. @PostConstruct和@PreDestroy 注释
+```xml
+<bean id="exampleInitBean" class="examples.ExampleBean" init-method="init" destroy-method="cleanup" />
+```
+可以在beans标签上配置默认的初始化和销毁回调方法
+```xml
+<beans default-destroy-method="destroy" default-init-method="init" ></beans>
+```
+
+### 依赖
+
+#### 使用构造器注入
+
+##### 通过参数的顺序
+```xml
+<bean id="person" class="com.qworldr.bean.Person" />
+    <constructor-arg index="0">
+        <value>张三</value>
+    </constructor-arg>
+    <constructor-arg index="1">
+        <value>56</value>
+    </constructor-arg>
+</bean>
+```
+##### 通过参数的类型
+```xml
+<bean id="person" class="com.qworldr.bean.Person" />
+    <constructor-arg type="java.lang.Integer">
+           <value>56</value>
+    </constructor-arg>
+    <constructor-arg type="java.lang.String">
+           <value>张三</value>
+    </constructor-arg>
+</bean>
+```
+#### 使用属性setting方法进行注入
+
+简单Bean的注入
+简单Bean包括两种类型：包装类型和String
+```xml
+<bean id="person" class="com.qworldr.bean.Person" />
+<!-- 基本类型,string类型-->
+<property name="age" value="20"></property>
+<property name="name" value="张无忌"></property>                        
+</bean>
+```
+引用其他Bean
+```xml
+<bean id="personService"  class="com.qworldr.bean.impl.PersonServiceImpl" />
+ <property name="person" ref="person" />
+</bean>
+```
+
+#### 注入集合
+```xml
+<bean id="moreComplexObject" class="example.ComplexObject">
+    <!-- results in a setAdminEmails(java.util.Properties) call -->
+    <property name="adminEmails">
+        <props>
+            <prop key="administrator">administrator@example.org</prop>
+            <prop key="support">support@example.org</prop>
+            <prop key="development">development@example.org</prop>
+        </props>
+    </property>
+    <!-- results in a setSomeList(java.util.List) call -->
+    <property name="someList">
+        <list>
+            <value>a list element followed by a reference</value>
+            <ref bean="myDataSource" />
+        </list>
+    </property>
+    <!-- results in a setSomeMap(java.util.Map) call -->
+    <property name="someMap">
+        <map>
+            <entry key="an entry" value="just some string"/>
+            <entry key ="a ref" value-ref="myDataSource"/>
+        </map>
+    </property>
+    <!-- results in a setSomeSet(java.util.Set) call -->
+    <property name="someSet">
+        <set>
+            <value>just some string</value>
+            <ref bean="myDataSource" />
+        </set>
+    </property>
+</bean>
+```
+
+#### 空值和空字符串注入
+
+空字符串
+```xml
+<bean class="ExampleBean">
+    <property name="email" value=""/>
+</bean>
+```
+
+空值
+```xml
+<bean class="ExampleBean">
+    <property name="email">
+        <null/>
+    </property>
+</bean>
+```
+
+#### depends-on
+如果bean是另一个bean的依赖项，那通常意味着将一个bean设置为另一个bean的属性。但是，有时bean之间的依赖关系不那么直接。例如，需要触发类中的静态初始化程序，例如数据库驱动程序注册。depends-on在初始化使用此元素的bean之前，该属性可以显式强制初始化一个或多个bean。以下示例使用该depends-on属性表示对单个bean的依赖关系：
+
+```xml
+<bean id="beanOne" class="ExampleBean" depends-on="manager"/>
+<bean id="manager" class="ManagerBean" />
+```
+要表示对多个bean的依赖关系,depends-on属性的值可以用逗号，空格和分号分隔
+
+
+### 继承关系
+abstract=true的bean不能单独实例化，只能做为父类，被子类通过parent属性引用。
+```xml
+<bean id="inheritedTestBeanWithoutClass" abstract="true">
+    <property name="name" value="parent"/>
+    <property name="age" value="1"/>
+</bean>
+
+<bean id="inheritsWithClass" class="org.springframework.beans.DerivedTestBean"
+        parent="inheritedTestBeanWithoutClass" init-method="initialize">
+    <property name="name" value="override"/>
+    <!-- age will inherit the value of 1 from the parent bean definition-->
+</bean>
+```
+## 基于注解的配置
+###  包扫描
+注解配置首先要开启包扫描.扫描包范围的类，对带注解@Component的类进行处理，注册进Spring。
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd">
+    <context:component-scan base-package="org.example"/>
+</beans>
+```
+使用<context:component-scan>隐式启用功能 <context:annotation-config>
+
+#### 过滤器
+可以通过include-filter和exclude-filter添加或过滤扫描的类。
+```xml
+<context:component-scan base-package="org.example">
+ <context:include-filter type="regex"
+                expression=".*Stub.*Repository"/>
+  <context:exclude-filter type="annotation"
+                expression="org.springframework.stereotype.Repository"/>
+</context:component-scan>
+```
+过滤的类型
+"annotation" 根据组件的注解过滤
+"assignable" 根据组件的类型过滤（包括父类或接口类型） 
+"aspectj" 根据切面表达式过滤
+"regex" 根据正则匹配类名
+"custom" 自定义实现 org.springframework.core.type.TypeFilter interface.
+
+#### 命名生成
+
+为扫描的组件生成标识符，可以实现 BeanNameGenerator 接口来实现自定义的命名规则。
+```xml
+<beans>
+    <context:component-scan base-package="org.example"
+        name-generator="org.example.MyNameGenerator" />
+</beans>
+```
+
+#### 范围解析器
+
+Spring提供6种Scope(singleton,prototype,4种web环境的范围),可以实现该 ScopeMetadataResolver 接口，来实现自定义的Scope范围解析器，通过xml配置解析器
+```xml
+<beans>
+    <context:component-scan base-package="org.example" scope-resolver="org.example.MyScopeResolver"/>
+</beans>
+```
+使用某些非单例范围时，可能需要为范围对象生成代理。为此，组件扫描元素上提供了scoped-proxy属性。三个可能的值是：no，interfaces，和targetClass。这是代理的模式，interfaces要求类必须由接口，用的时jdk的动态代理。targetClass时cglib的动态代理。
+```xml
+<beans>
+    <context:component-scan base-package="org.example" scoped-proxy="interfaces"/>
+</beans>
+```
+
+例子：userManager是singleton，所有userManager仅被初始化一次，并且其属性userPreferences也仅被注射一次。当session失效后，userManager仍将保留userPreferences实例，这时userPreferences的范围不符合session。但是如果userPerfereneces加上<aop:scoped-proxy/>，userManager的属性userPreferences指向的是com.foo.UserPreferences实例的代理，当session过期后，userManager的属性userPreferences自然也不能再使用。
+```xml
+<bean id="userPreferences" class="com.foo.UserPreferences" scope="session">
+    <aop:scoped-proxy/>
+</bean>
+
+<bean id="userManager" class="com.foo.UserManager">
+    <property name="userPreferences" ref="userPreferences"/>
+</bean>
+```
+
+#### 注解方式配置包扫描
+
+```java
+@Configuration
+@ComponentScan(basePackages = "org.example", nameGenerator = MyNameGenerator.class, scopeResolver = MyScopeResolver.class, scopedProxy = ScopedProxyMode.INTERFACES)
+public class AppConfig {
+    ...
+}
+```
+
+### 注解方式注册bean定义
+
+@Component，@Service，和 @Controller。@Component是任何Spring管理组件的通用注解。 @Repository，@Service和，@Controller是@Component更具体的用例（分别在持久性，服务和表示层），都是和@Component组合的注解
+```java
+@Target({ElementType.TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Component
+public @interface Controller {
+	@AliasFor(annotation = Component.class)
+	String value() default "";
+
+}
+```
+包扫描时，会扫描加了这些注解的类，将类定义注册进入Spring中。
+
+### Scope注解
+@Scope注解配置特定bean定义创建的对象的范围，同xml的Scope配置一样
+```java
+@Scope("prototype")
+@Component
+public class MovieFinderImpl implements MovieFinder {
+    // ...
+}
+```
+
+### 注解注入
+注解注入有以下3种
+1. @Autowired ，默认byType注入，可以和@Qualifier组合通过byName注入。
+2. @Inject ，默认byType注入，可以和@Named组合通过byName注入。
+3. @Resource，默认byName注入，失败会转为byType
+
+###  @PostConstruct和@PreDestroy 
+1. @PostConstruct bean的初始化方法
+2. @PreDestroy  bean的销毁方法  
+
+### JSR-330注解和Spring注解
+
+对应注解功能一样
+Spring	| javax.inject.*
+--|--	
+@Autowired|@Inject
+@Component|@Named / @ManagedBean
+@Scope("singleton")|@Singleton
+@Qualifier |@Qualifier / @Named
+
+
+## 基于java的配置
+
+### 配置类@Configuration
+带@Configuration的类表示其作用是用于配置，由Spring管理。@Configuration也是和@Component组合的注解，功能一样。@Bean用来修饰一个返回对象实例的方法，相等于xml的<bean/>标签
+
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public MyService myService() {
+        return new MyServiceImpl();
+    }
+}
+```
+### AnnotationConfigApplicationContext启动
+```java
+public static void main(String[] args) {
+    ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConfig.class);
+    MyService myService = ctx.getBean(MyService.class);
+    myService.doStuff();
+}
+
+```
+register方法注册配置类
+```java
+public static void main(String[] args) {
+    AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+    ctx.register(AppConfig.class);
+    ctx.refresh();
+    MyService myService = ctx.getBean(MyService.class);
+    myService.doStuff();
+}
+```
+### @Bean使用
+@Bean用来修饰一个返回对象实例的方法，相等于xml的<bean/>标签
+
+#### 依赖注入
+通过方法参数实现依赖注入
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public TransferService transferService(AccountRepository accountRepository) {
+        return new TransferServiceImpl(accountRepository);
+    }
+}
+
+```
+
+通过方法内调用@Bean方法获取对象注入。
+clientService1和clientService2都调用了clientDao，clientDao被调用2次，应该会创建2个clientDao对象。但是实际上Spring只会创建一个对象，他们获取到的clientDao是一样的。所有@Configuration类启动的都是CGLIB生成的子类。在子类中，子方法在调用父方法并创建新实例之前，首先检查容器是否有任何缓存（作用域）,有的话不会再创建。
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public ClientService clientService1() {
+        ClientServiceImpl clientService = new ClientServiceImpl();
+        clientService.setClientDao(clientDao());
+        return clientService;
+    }
+
+    @Bean
+    public ClientService clientService2() {
+        ClientServiceImpl clientService = new ClientServiceImpl();
+        clientService.setClientDao(clientDao());
+        return clientService;
+    }
+
+    @Bean
+    public ClientDao clientDao() {
+        return new ClientDaoImpl();
+    }
+}
+
+```
+
+#### 生命周期回调
+```java
+public class BeanOne {
+
+    public void init() {
+        // initialization logic
+    }
+}
+
+public class BeanTwo {
+
+    public void cleanup() {
+        // destruction logic
+    }
+}
+
+@Configuration
+public class AppConfig {
+
+    @Bean(initMethod = "init")
+    public BeanOne beanOne() {
+        return new BeanOne();
+    }
+
+    @Bean(destroyMethod = "cleanup")
+    public BeanTwo beanTwo() {
+        return new BeanTwo();
+    }
+}
+
+```
+
+#### Bean的范围
+```java
+@Configuration
+public class MyConfiguration {
+
+    @Bean
+    @Scope("prototype")
+    public Encryptor encryptor() {
+        // ...
+    }
+}
+
+```
+### @Import
+和xml的<import/>标签功能一样，导入其他配置类
+```java
+@Configuration
+public class ConfigA {
+
+    @Bean
+    public A a() {
+        return new A();
+    }
+}
+
+@Configuration
+@Import(ConfigA.class)
+public class ConfigB {
+
+    @Bean
+    public B b() {
+        return new B();
+    }
+}
+
+```
+
+scan扫描包
+```java
+public static void main(String[] args) {
+    AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+    ctx.scan("com.acme");
+    ctx.refresh();
+    MyService myService = ctx.getBean(MyService.class);
+}
+```
+
+# Spring环境配置
+
+## profile区分生产环境和开发环境
+通过@Profile注解标识配置文件的使用环境。@Profile也可以加载类上。
+```java
+@Configuration
+public class AppConfig {
+
+    @Bean("dataSource")
+    @Profile("development") 
+    public DataSource standaloneDataSource() {
+        return new EmbeddedDatabaseBuilder()
+            .setType(EmbeddedDatabaseType.HSQL)
+            .addScript("classpath:com/bank/config/sql/schema.sql")
+            .addScript("classpath:com/bank/config/sql/test-data.sql")
+            .build();
+    }
+
+    @Bean("dataSource")
+    @Profile("production") 
+    public DataSource jndiDataSource() throws Exception {
+        Context ctx = new InitialContext();
+        return (DataSource) ctx.lookup("java:comp/env/jdbc/datasource");
+    }
+}
+
+```
+
+xml配置文件profile属性
+```xml
+<beans profile="development"
+    xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+    xsi:schemaLocation="...">
+
+    <jdbc:embedded-database id="dataSource">
+        <jdbc:script location="classpath:com/bank/config/sql/schema.sql"/>
+        <jdbc:script location="classpath:com/bank/config/sql/test-data.sql"/>
+    </jdbc:embedded-database>
+</beans>
+<beans profile="production"
+    xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:jee="http://www.springframework.org/schema/jee"
+    xsi:schemaLocation="...">
+
+    <jee:jndi-lookup id="dataSource" jndi-name="java:comp/env/jdbc/datasource"/>
+</beans>
+```
+### 激活配置文件
+
+#### java代码激活配置文件
+```java
+AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+ctx.getEnvironment().setActiveProfiles("development");
+ctx.register(AppConfig.class);
+ctx.refresh();
+```
+#### spring.profiles.active属性激活配置文件
+spring.profiles.active属性声明性地激活配置文件，该属性可以通过系统环境变量，JVM系统属性，servlet上下文参数web.xml或甚至JNDI中的条目来指定
+
+```
+-Dspring.profiles.active="profile1,profile2"
+```
+
+
+### 默认配置环境
+Environment.setDefaultProfiles() 设置默认环境。如果没有激活配置文件，dataSource则创建该配置文件。您可以将此视为一种为一个或多个bean提供默认定义的方法。如果启用了任何配置文件，则默认配置文件不适用。
+
+
+## PropertySource
+SpringStandardEnvironment 配置有两个PropertySource对象 - 一个表示JVM系统属性集（System.getProperties()），另一个表示系统环境变量集（System.getenv()）。
+
+层次结构如下，最高优先级条目位于顶部：
+1. ServletConfig参数（如果适用 - 例如，在DispatcherServlet上下文的情况下）
+2. ServletContext参数（web.xml context-param条目）
+3. JNDI环境变量（java:comp/env/条目）
+4. JVM系统属性（-D命令行参数）
+5. JVM系统环境（操作系统环境变量）
+
+
+### @PropertySource
+通过@PropertySource添加PropertySource 到Spring的Environment
+app.properties
+```
+testbean.name=myTestBean
+```
+```java
+@Configuration
+@PropertySource("classpath:/com/myco/app.properties")
+public class AppConfig {
+
+    @Autowired
+    Environment env;
+
+    @Bean
+    public TestBean testBean() {
+        TestBean testBean = new TestBean();
+        testBean.setName(env.getProperty("testbean.name"));
+        return testBean;
+    }
+}
+```
+
+可以使用占位符${},值从已注册的属性中找
+```java
+@PropertySource("classpath:/com/${my.placeholder:default/path}/app.properties")
+```
+# ApplicationContext扩展功能
+
+## 国际化MessageSource
+ApplicationContext接口扩展了一个名为的接口MessageSource，提供了国际化（“i18n”）功能。
+MessageSource方法
+```java
+String getMessage(String code, Object[] args, String default, Locale loc)：MessageSource用于从中检索消息的基本方法。如果未找到指定区域设置的消息，则使用默认消息。传入的任何参数都使用MessageFormat标准库提供的功能成为替换值。
+
+String getMessage(String code, Object[] args, Locale loc)：基本上与前一个方法相同，但有一点不同：无法指定默认消息。如果找不到该消息，则抛出NoSuchMessageException。
+
+String getMessage(MessageSourceResolvable resolvable, Locale locale)：前面方法中使用的所有属性也包装在一个名为MessageSourceResolvable的类中 ，您可以使用此方法。
+```
+当ApplicationContext被加载时，自动在Spring容器中搜索MessageSource的bean。bean名称必须是messageSource。如果找到这样的bean，则对前面方法的所有调用都被委托给这个MessageSource。如果未找到任何MessageSource，ApplicationContext尝试查找包含具有相同名称的bean的父级。如果存在，它将使用该bean作为MessageSource。如果 ApplicationContext找不到任何消息源，一个空的DelegatingMessageSource被实例化，以便能够接受对上面定义的方法的调用。
+
+Spring提供了两种MessageSource实现方式，ResourceBundleMessageSource和 StaticMessageSource。两者都实现了HierarchicalMessageSource为了进行嵌套消息传递。StaticMessageSource提供了编程的方式向消息源添加消息，但很少使用。
+
+### ResourceBundleMessageSource使用例子
+加载类路径下的format.properties，exceptions.properties和windows.properties 
+```xml
+<beans>
+    <bean id="messageSource"
+            class="org.springframework.context.support.ResourceBundleMessageSource">
+        <property name="basenames">
+            <list>
+                <value>format</value>
+                <value>exceptions</value>
+                <value>windows</value>
+            </list>
+        </property>
+    </bean>
+</beans>
+```
+```
+# in format.properties
+message=Alligators rock!
+
+# in exceptions.properties
+argument.required=The {0} argument is required.
+```
+使用MessageSource，所有ApplicationContext都是MessageSource的实现，因此可以转换为MessageSource接口
+```java
+public static void main(String[] args) {
+    MessageSource resources = new ClassPathXmlApplicationContext("beans.xml");
+    String message = resources.getMessage("message", null, "Default", null);
+    System.out.println(message);
+}
+```
+
+输出结果
+```
+Alligators rock!
+```
+配置文件名可以加上语言后缀
+format_en_GB.properties
+```
+# in exceptions_en_GB.properties
+argument.required=Ebagum lad, the {0} argument is required, I say, required.
+```
+设置语言和参数
+```java
+public static void main(final String[] args) {
+    MessageSource resources = new ClassPathXmlApplicationContext("beans.xml");
+    String message = resources.getMessage("argument.required",
+        new Object [] {"userDao"}, "Required", Locale.UK);
+    System.out.println(message);
+}
+```
+输出结果
+```
+Ebagum lad, the 'userDao' argument is required, I say, required.
+```
+
+### ReloadableResourceBundleMessageSource
+Spring提供了一个 ReloadableResourceBundleMessageSource类替代ResourceBundleMessageSource。ReloadableResourceBundleMessageSource支持从任何Spring资源位置（不仅从类路径）读取文件，并支持属性文件的热重新加载（同时在其间有效地缓存它们）
+
+```xml
+<bean id="messageSource" class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
+	<property name="basename" value="classpath:message"/>
+	<property name="fallbackToSystemLocale" value="false"/>
+	<property name="defaultEncoding" value="UTF-8"/>
+    <!--默认缓存时间-1，永久缓存-->
+    <property name="cacheSeconds" value="1200"/>
+     <!--是否允许刷新，默认允许-->
+    <property name="concurrentRefresh" value="true">
+</bean>
+
+```
+使用上和ResourceBundleMessageSource基本一致。
+
+### 实现MessageSourceAware接口
+MessageSourceAware会将MessageSource注入到bean中。
+
+
+## 资源访问ResourceLoader
+ApplicationContext实现了ResourceLoader接口，可以通过getResource方法加载Resource。Resource是对资源的描述，可以获取资源的流。通过ResourceLoaderAware接口可以获取ResourceLoader。
+Resource可以透明方式从几乎任何位置获取资源，包括类路径，文件系统位置，可用标准URL描述的任何位置。
+```
+ApplicationContext ctx = new ClassPathXmlApplicationContext("conf/appContext.xml");
+```
+```java
+//类路径
+Resource template = ctx.getResource("classpath:some/resource/path/myTemplate.txt");
+//本地文件路径
+Resource template = ctx.getResource("file:///some/resource/path/myTemplate.txt");
+//http网络路径
+Resource template = ctx.getResource("http://myhost.com/resource/path/myTemplate.txt");
+```
+在不加资源描述符的路径，路径取决于ApplicationContext的确切类型，如ClassPathXmlApplicationContext的描述符默认是classpath:
+## 事件处理
+ApplicationContext通过ApplicationEvent 类和ApplicationListener接口提供事件处理。如果将实现ApplicationListener接口的bean 部署到上下文中，则每次 ApplicationEvent将其发布到该ApplicationContextbean时，都会通知该bean。
+### 内置事件
+事件	|说明
+--|--
+ContextRefreshedEvent|ApplicationContext初始化或刷新时发布（例如，通过refresh()在ConfigurableApplicationContext接口上使用该方法）。这里，“初始化”意味着加载所有bean，post-processor beans 检测并激活，预先实例化单例，并ApplicationContext准备好使用该对象。只要上下文尚未关闭，只要所选择的ApplicationContext实际支持这种“热”刷新，就可以多次触发刷新。例如，XmlWebApplicationContext支持热刷新，但GenericApplicationContext不支持 。
+ContextStartedEvent|ApplicationContext通过start()启动时发布。这里，“已启动”意味着所有Lifecycle bean都会收到明确的启动信号。通常，此信号用于在显式停止后重新启动Bean，但它也可用于启动尚未为自动启动配置的组件（例如，在初始化时尚未启动的组件）。
+ContextStoppedEvent|ApplicationContext通过stop()停止时发布。这里，“停止”意味着所有Lifecycle bean都会收到明确的停止信号。可以通过start()呼叫重新启动已停止的上下文 。
+ContextClosedEvent|ApplicationContext通过close()关闭时发布。这里，“关闭”意味着所有单例bean都被销毁。封闭的环境达到其寿命终结。它无法刷新或重新启动。
+RequestHandledEvent|一个特定于Web的事件，告诉所有bean已经为HTTP请求提供服务。请求完成后发布此事件。此事件仅适用于使用Spring的Web应用程序。
+
+### 自定义事件
+
+1. 继承ApplicationEvent 自定义事件
+```java
+public class BlackListEvent extends ApplicationEvent {
+
+    private final String address;
+    private final String content;
+
+    public BlackListEvent(Object source, String address, String content) {
+        super(source);
+        this.address = address;
+        this.content = content;
+    }
+
+    // accessor and other methods...
+}
+```
+
+2. 实现ApplicationEventPublisherAware 接口获取ApplicationEventPublisher事件发布器
+ApplicationContext也是一个ApplicationEventPublisher。可以通过获取ApplicationContext发布事件
+```java
+public class EmailService implements ApplicationEventPublisherAware {
+
+    private List<String> blackList;
+    private ApplicationEventPublisher publisher;
+
+    public void setBlackList(List<String> blackList) {
+        this.blackList = blackList;
+    }
+
+    public void setApplicationEventPublisher(ApplicationEventPublisher publisher) {
+        this.publisher = publisher;
+    }
+
+    public void sendEmail(String address, String content) {
+        if (blackList.contains(address)) {
+            publisher.publishEvent(new BlackListEvent(this, address, content));
+            return;
+        }
+        // send email...
+    }
+}
+
+```
+
+3. 事件监听者，触发事件后会回调事件监听者
+
+```java
+public class BlackListNotifier implements ApplicationListener<BlackListEvent> {
+
+    private String notificationAddress;
+
+    public void setNotificationAddress(String notificationAddress) {
+        this.notificationAddress = notificationAddress;
+    }
+
+    public void onApplicationEvent(BlackListEvent event) {
+        // notify appropriate parties via notif bicationAddress...
+    }
+}
+
+```
+
+### 注解方式设置监听器
+通过@EventListener代替ApplicationListener接口
+```java
+    @EventListener
+    public void processBlackListEvent(BlackListEvent event) {
+        // notify appropriate parties via notificationAddress...
+    }
+```
+
+#### 监听多个事件
+```java
+@EventListener({ContextStartedEvent.class, ContextRefreshedEvent.class})
+public void handleContextStart() {
+    ...
+}
+```
+#### 通过SpEL表达式过滤事件
+```java
+@EventListener(condition = "#blEvent.content == 'my-event'")
+public void processBlackListEvent(BlackListEvent blEvent) {
+    // notify appropriate parties via notificationAddress...
+}
+```
+
+Name	|Location	|Description|	Example
+--|--|--|--
+事件|root object |发生的事件|#root.event
+参数数组| root object| 方法参数（做为数组）| #root.args[0]
+参数名| |调用方法的参数名|#blEvent or #a0 
+
+### 异步监听
+
+```java
+@EventListener
+@Async
+public void processBlackListEvent(BlackListEvent event) {
+    // BlackListEvent 被一个单独的线程执行
+}
+
+```
+异步监听需要配置executor才可以。
+SimpleApplicationEventMulticaster.multicastEvent:
+```java
+@Override
+public void multicastEvent(final ApplicationEvent event, ResolvableType eventType) {
+    ResolvableType type = (eventType != null ? eventType : resolveDefaultEventType(event));
+    for (final ApplicationListener<?> listener : getApplicationListeners(event, type)) {
+        Executor executor = getTaskExecutor();
+        if (executor != null) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    invokeListener(listener, event);
+                }
+            });
+        } else {
+            invokeListener(listener, event);
+        }
+    }
+}
+```
+异步监听注意事项
+1. 事件监听器抛出异常，无法传播到调用者。
+
+
+### 事件排序 @Order
+入果需要在另一个监听器之前调用一个监听器，则可以将@Order 注释添加到方法声明中，如以下示例所示：
+```java
+@EventListener
+@Order(42)
+public void processBlackListEvent(BlackListEvent event) {
+    // notify appropriate parties via notificationAddress...
+}
+```
+
+### 泛型事件监听
+
+```java
+@EventListener
+public void onPersonCreated(EntityCreatedEvent<Person> event) {
+    ...
+}
+
+由于类型擦除，仅当泛型参数在被触发的事件的类上定义（即 class PersonCreatedEvent extends EntityCreatedEvent<Person> { …​ }）时，此方法才有效。
+
+```
+
+
